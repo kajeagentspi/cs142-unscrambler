@@ -5,156 +5,93 @@
 #include <time.h>
 #include "avl.h"
 #include "trie.h"
+#include "tools.h"
+clock_t startClock;
+int wordCount = 0;
 
-typedef struct word{
-  char *string;
-  struct word *next;
-} WORD;
-
-TRIE* loadDictionary(){
-  TRIE* root = createTrieNode();
-  FILE *fp = fopen("words.txt", "r");
-  int loaded=0;
-  int discarded=0;
-  if(fp){
-    const size_t line_size = 300;
-    char *line = (char *)malloc(line_size);
-    char *copy = NULL;
-    int alpha;
-    while (fgets(line, line_size, fp) != NULL){
-      alpha = TRUE;
-      line[strcspn(line, "\r\n")] = '\0';
-      for (int i = 0; line[i]; i++){
-        if (!isalpha(line[i])) {
-          alpha = FALSE;
-          discarded++;
-          break;
-        }
-        line[i] = tolower(line[i]);
-      }
-      if(alpha){
-        loaded++;
-        copy = (char*)malloc(line_size);
-        strcpy(copy,line);
-        insertWordToTrie(root, copy);
-      }
-    }
-    fclose(fp);
-    printf("Words Loaded: %i\n", loaded);
-    printf("Words Discarded: %i\n", discarded);
-    return root;
-  }else{
-    exit(1);
-  }
-}
-
-void swap(char *x, char *y) { 
-  char temp; 
-  temp = *x; 
-  *x = *y; 
-  *y = temp; 
-} 
-
-void permute(TRIE* root, avl_node** generatedWords, char* word, int left, int right, char* template, int templateLength, int blanks){
-  // blankCounter = counter of blanks
-  // replaceIndex current index in word that will replace _
-  int blankCounter,j,replaceIndex,firstReplace;
-  if(left==right || left == blanks){
-    char *string = (char *)malloc(sizeof(char) * templateLength + 1);
-    strcpy(string, template);
-    blankCounter = 0;
-    replaceIndex = 0;
-    for(j=0;j<templateLength || blankCounter<blanks; ++j){
-      if(string[j] == '_'){
-        string[j]=word[replaceIndex];
-        replaceIndex+=1;
-        blankCounter+=1;
-      }
-    }
-    if(searchWordInTrie(root,string) && search_value(generatedWords,string)==FALSE){
-      insert_value(generatedWords,string);
+void permute(TRIE* root, avl_node** validWords, char* generatedWord, int left, int right, char* template, int templateLength, int blanks){
+  // left == right for template strings that are not all _
+  // left == blanks otherwise
+  if(left == right || left == blanks){
+    char *string = mergeTemplate(generatedWord, blanks, template, templateLength, NULL);
+    if(searchWordInTrie(root, string) && search_value(validWords, string) == FALSE){
+      clock_t currentClock = clock();
+      double duration = (double)(currentClock - startClock) / (double)CLOCKS_PER_SEC;
+      printf("%s %0.8fs\n", string, duration);
+      insert_value(validWords, string);
+      wordCount++;
     }else{
       free(string);
     }
   }
-  for(int i=left;i<right;i++){
-    swap(word+left,word+i);
-    char *string = (char *)malloc(sizeof(char) * templateLength + 1);
-    strcpy(string, template);
-    blankCounter = 0;
-    replaceIndex = 0;
-    firstReplace = 0;
-    for(j=0;j<templateLength || blankCounter<blanks; ++j){
-      if(string[j] == '_'){
-        if(blankCounter == 0){
-          firstReplace = j;
-        }
-        string[j]=word[replaceIndex];
-        replaceIndex+=1;
-        blankCounter+=1;
-      }
-    }
-    
-    if (left<templateLength && searchForPrefixInTrie(root,string,firstReplace+left)) {
-      permute(root, generatedWords, word, left+1, right, template, templateLength, blanks);
+  int firstReplace;
+  for(int i = left; i < right; i++){
+    swap(generatedWord + left, generatedWord + i);
+    char *string = mergeTemplate(generatedWord, blanks, template, templateLength, &firstReplace);
+    // printf("%s\n", string);
+    if (left < templateLength && searchForPrefixInTrie(root, string, firstReplace + left)) {
+      permute(root, validWords, generatedWord, left + 1, right, template, templateLength, blanks);
     }
     free(string);
-    swap(word+left,word+i);
+    swap(generatedWord + left,generatedWord + i);
   }
 }
 
+
+
 int main(int argc, char **argv){
-  avl_node *generatedWords = NULL;
-  int start, move, i, j, candidate;
+  int characters[100];
   char *charString = argv[1];
-  clock_t t1,t2;   // store start and end time here
-  double t;
-  t1 = clock();
-  int N = strlen(argv[1]);
-  int M = strlen(argv[2]);
-  if(N < M){
+  char *templateString = argv[2];
+  int charLength = strlen(charString);
+  int templateLength = strlen(templateString);
+  double totalTime;
+  clock_t endClock;
+  TRIE* root = loadDictionary();
+  avl_node *validWords = NULL;
+  startClock = clock();
+  if(charLength < templateLength){
     printf("Template string too long!!\n");
     exit(1);
+  } else if (argc != 3){
+    printf("Please enter strings\n");
+    exit(1);
   }
-  TRIE* root = loadDictionary();
-  int characters[100];
   int usedChar = 0, blanks = 0;
-  char *word = (char *)malloc(sizeof(char) * N);
-  char *template = argv[2];
-  word = strcpy(word, argv[1]);
-
-  for (int i = 0; i < M; ++i){
-    if (template[i] == '_')
-      blanks += 1;
-    else{
-      for (int j = 0; j < N; ++j){
-        if (template[i] == word[j]){
+  char *word = (char *)malloc(sizeof(char) * charLength + 1);
+  strcpy(word, charString);
+  // count number of blanks and turn all characters available in the template to -1;
+  for(int i = 0; i < templateLength; i++){
+    if (templateString[i] == '_') {
+      blanks++;
+    }else{
+      for (int j = 0; j < templateLength; ++j){
+        if (templateString[i] == word[j]){
           word[j] = -1;
-          usedChar += 1;
+          usedChar++;
           break;
         }
       }
     }
   }
-
-  printf("Reduced: %s  %s %d %d\n", word, template, usedChar, blanks);
-  char *unusedChar = (char *)malloc(sizeof(char) * (N - usedChar));
-  unusedChar[N - usedChar] = '\0';
-  i = 0;
-  for (int j = 0; j < N; ++j){
-    if (word[j] != -1){
-      unusedChar[i] = word[j];
-      i += 1;
+  char *unusedChar = (char *)malloc(sizeof(char) * (charLength - usedChar));
+  unusedChar[charLength - usedChar] = '\0';
+  int j = 0;
+  printf("%s\n", word);
+  for (int i = 0; i < charLength; ++i){
+    if (word[i] != -1){
+      unusedChar[j] = word[i];
+      j++;
     }
   }
-
   int unusedLen = strlen(unusedChar);
-  printf("unused: %s %d\n", unusedChar, unusedLen);
-  permute(root, &generatedWords, unusedChar, 0, unusedLen, template, M, blanks);
-  int wordCount=0;
-  viewAVLasList(generatedWords,&wordCount);
+  printf("Reduced: %s  %s %d %d\n", charString, templateString, usedChar, blanks);
+  qsort(unusedChar, unusedLen, sizeof(char), compare);
+  printf("unused: %s %d\n", unusedChar, 45);
+  printf("===GENERATED WORDS===\n");
+  permute(root, &validWords, unusedChar, 0, unusedLen, templateString, templateLength, blanks);
   printf("Number of words found: %i\n", wordCount);
-  t2 = clock();
-  t=(double)(t2-t1)/(double)CLOCKS_PER_SEC;
-  printf("time elapsed: %0.2f\n", t);
+  endClock = clock();
+  totalTime=(double)(endClock - startClock) / (double)CLOCKS_PER_SEC;
+  printf("time elapsed: %0.8fs\n", totalTime);
 }

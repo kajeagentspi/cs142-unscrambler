@@ -2,18 +2,22 @@
 #define CHAR_TO_INDEX(c) ((int)c - (int)'a')
 
 typedef struct trie_node{
-  struct trie_node *children[SIZE];
+  struct trie_node* parent;
+  struct trie_node* children[SIZE];
   int isEnd;
+  int charactersTillLongest;
   char character;
 } TRIE;
 
-TRIE* createTrieNode(){
+TRIE* createTrieNode(TRIE* parent){
   TRIE* node = (TRIE*)malloc(sizeof(TRIE));
   // successfull malloc
   if(node){
-    node->isEnd=FALSE;
+    node -> parent = parent;
+    node -> isEnd = FALSE;
+    node -> charactersTillLongest = -1;
     for(int i = 0; i < SIZE; i++){
-      node->children[i]=NULL;
+      node -> children[i] = NULL;
     }
     
   }
@@ -22,16 +26,52 @@ TRIE* createTrieNode(){
 void insertWordToTrie(TRIE* root, char* word){
   int length = strlen(word);
   int index;
+  int remainingCharacters = length;
   TRIE* iterator = root;
   for(int i = 0; i < length; i++){
     index = CHAR_TO_INDEX(word[i]);
-    if (iterator->children[index]==NULL) {
-      iterator->character = word[i];
-      iterator->children[index] = createTrieNode();
+    if (iterator -> children[index] == NULL) {
+      iterator -> children[index] = createTrieNode(iterator);
+      iterator -> children[index] -> character = word[i];
     }
+    if (iterator -> children[index] -> charactersTillLongest < remainingCharacters) {
+      iterator -> children[index] -> charactersTillLongest = remainingCharacters;
+    }
+    remainingCharacters--;
     iterator=iterator->children[index];
   }
   iterator->isEnd=TRUE;
+}
+
+void deleteWord(TRIE* end, char* word){
+  // check if there are children if there is no changes
+  for(int i = 0; i < SIZE; i++){
+    if (end -> children[i] != NULL) {
+      return;
+    }
+  }
+  int length = strlen(word);
+  int counter = 1;
+  TRIE* iterator = end;
+  int subword = FALSE;
+  for(int i = 0; i < length; i++){
+    if (iterator == NULL) {
+      break;
+    }else if (iterator -> isEnd == TRUE && i != 0 && subword == FALSE){
+      iterator -> charactersTillLongest = counter;
+      counter++;
+      subword = TRUE;
+    }
+    if(subword){
+      iterator -> charactersTillLongest = counter;
+      counter++;
+    }else{
+      int index = CHAR_TO_INDEX(iterator -> character);
+      iterator = iterator -> parent;
+      free(iterator -> children[index]);
+      iterator -> children[index] = NULL;
+    }
+  }
 }
 
 int searchWordInTrie(TRIE* root, char* word){
@@ -40,28 +80,70 @@ int searchWordInTrie(TRIE* root, char* word){
   TRIE* iterator = root;
   for(int i = 0; i < length; i++){
     index = CHAR_TO_INDEX(word[i]);
-    if (iterator->children[index]==NULL) {
+    if (iterator -> children[index] == NULL) {
       return FALSE;
     }
-    iterator = iterator->children[index];
+    iterator = iterator -> children[index];
   }
-  if (iterator->isEnd) {
+  if (iterator -> isEnd) {
+    deleteWord(iterator, word);
     return TRUE;
   }else{
     return FALSE;
   }
 }
 
-int searchForPrefixInTrie(TRIE* root, char* prefix, int length){
+// given a word check if the first length numbers can form a word
+int searchForPrefixInTrie(TRIE* root, char* word, int prefixLength){
   int index;
   TRIE* iterator = root;
-  int prefixLength = strlen(prefix);
-  for(int i = 0; i < length; i++){
-    index = CHAR_TO_INDEX(prefix[i]);
-    if (iterator->children[index]==NULL) {
+  // printf("%i\n", root -> children[CHAR_TO_INDEX('p')] -> charactersTillLongest);
+  int wordLength = strlen(word);
+  for(int i = 0; i < prefixLength; i++){
+    index = CHAR_TO_INDEX(word[i]);
+    if (iterator -> children[index] == NULL || iterator -> children[index] -> charactersTillLongest < wordLength) {
       return FALSE;
     }
+    wordLength--;
     iterator = iterator->children[index];
   }
   return TRUE;
+}
+
+TRIE* loadDictionary(){
+  TRIE* root = createTrieNode(NULL);
+  root -> charactersTillLongest = 999;
+  FILE *fp = fopen("words.txt", "r");
+  int loaded=0;
+  int discarded=0;
+  if(fp){
+    const size_t line_size = 300;
+    char *line = (char *)malloc(line_size);
+    char *copy = NULL;
+    int alpha;
+    while (fgets(line, line_size, fp) != NULL){
+      alpha = TRUE;
+      line[strcspn(line, "\r\n")] = '\0';
+      for (int i = 0; line[i]; i++){
+        if (!isalpha(line[i])) {
+          alpha = FALSE;
+          discarded++;
+          break;
+        }
+        line[i] = tolower(line[i]);
+      }
+      if(alpha){
+        loaded++;
+        copy = (char*)malloc(line_size);
+        strcpy(copy,line);
+        insertWordToTrie(root, copy);
+      }
+    }
+    fclose(fp);
+    printf("Words Loaded: %i\n", loaded);
+    printf("Words Discarded: %i\n", discarded);
+    return root;
+  }else{
+    exit(1);
+  }
 }

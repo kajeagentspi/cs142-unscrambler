@@ -111,9 +111,7 @@ void insert_fixup(avl_node **rootptr, avl_node *temp){
 
     if (temp->parent == NULL)
       *rootptr = temp;
-
     temp = temp->parent;
-
   } while (temp != NULL);
 }
 
