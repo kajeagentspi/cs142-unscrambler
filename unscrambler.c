@@ -9,7 +9,7 @@
 clock_t startClock;
 int wordCount = 0;
 
-void permute(TRIE* root, avl_node** validWords, char* generatedWord, int left, int right, char* template, int templateLength, int blanks){
+void permute(TRIE* root, avl_node** validWords, avl_node** testedSubstrings, char* generatedWord, int left, int right, char* template, int templateLength, int blanks){
   // left == right for template strings that are not all _
   // left == blanks otherwise
   if(left == right || left == blanks){
@@ -30,14 +30,12 @@ void permute(TRIE* root, avl_node** validWords, char* generatedWord, int left, i
     char *string = mergeTemplate(generatedWord, blanks, template, templateLength, &firstReplace);
     // printf("%s\n", string);
     if (left < templateLength && searchForPrefixInTrie(root, string, firstReplace + left)) {
-      permute(root, validWords, generatedWord, left + 1, right, template, templateLength, blanks);
+      permute(root, validWords, testedSubstrings, generatedWord, left + 1, right, template, templateLength, blanks);
     }
     free(string);
     swap(generatedWord + left,generatedWord + i);
   }
 }
-
-
 
 int main(int argc, char **argv){
   int characters[100];
@@ -49,6 +47,7 @@ int main(int argc, char **argv){
   clock_t endClock;
   TRIE* root = loadDictionary();
   avl_node *validWords = NULL;
+  avl_node *testedSubstrings = NULL;
   startClock = clock();
   if(charLength < templateLength){
     printf("Template string too long!!\n");
@@ -85,11 +84,11 @@ int main(int argc, char **argv){
     }
   }
   int unusedLen = strlen(unusedChar);
-  printf("Reduced: %s  %s %d %d\n", charString, templateString, usedChar, blanks);
+  printf("Reduced: %s  %s %d %d\n", charString, templateString, unusedLen, blanks);
   qsort(unusedChar, unusedLen, sizeof(char), compare);
-  printf("unused: %s %d\n", unusedChar, 45);
+  printf("unused: %s %d\n", unusedChar, unusedLen);
   printf("===GENERATED WORDS===\n");
-  permute(root, &validWords, unusedChar, 0, unusedLen, templateString, templateLength, blanks);
+  permute(root, &validWords, &testedSubstrings, unusedChar, 0, unusedLen, templateString, templateLength, blanks);
   printf("Number of words found: %i\n", wordCount);
   endClock = clock();
   totalTime=(double)(endClock - startClock) / (double)CLOCKS_PER_SEC;

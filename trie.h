@@ -6,6 +6,7 @@ typedef struct trie_node{
   struct trie_node* children[SIZE];
   int isEnd;
   int charactersTillLongest;
+  int charactersTillNextEnd;
   char character;
 } TRIE;
 
@@ -16,11 +17,29 @@ TRIE* createTrieNode(TRIE* parent){
     node -> parent = parent;
     node -> isEnd = FALSE;
     node -> charactersTillLongest = -1;
+    node -> charactersTillNextEnd = 999;
     for(int i = 0; i < SIZE; i++){
       node -> children[i] = NULL;
     }
     
   }
+}
+
+// given a word check if the first length numbers can form a word
+int searchForPrefixInTrie(TRIE* root, char* word, int prefixLength){
+  int index;
+  TRIE* iterator = root;
+  // printf("%i\n", root -> children[CHAR_TO_INDEX('p')] -> charactersTillLongest);
+  int wordLength = strlen(word);
+  for(int i = 0; i < prefixLength; i++){
+    index = CHAR_TO_INDEX(word[i]);
+    if (iterator -> children[index] == NULL || iterator -> children[index] -> charactersTillLongest < wordLength || iterator -> children[index] -> charactersTillNextEnd > wordLength) {
+      return FALSE;
+    }
+    wordLength--;
+    iterator = iterator->children[index];
+  }
+  return TRUE;
 }
 
 void insertWordToTrie(TRIE* root, char* word){
@@ -36,6 +55,9 @@ void insertWordToTrie(TRIE* root, char* word){
     }
     if (iterator -> children[index] -> charactersTillLongest < remainingCharacters) {
       iterator -> children[index] -> charactersTillLongest = remainingCharacters;
+    }
+    if (iterator -> children[index] -> charactersTillNextEnd > remainingCharacters) {
+      iterator -> children[index] -> charactersTillNextEnd = remainingCharacters;
     }
     remainingCharacters--;
     iterator=iterator->children[index];
@@ -93,22 +115,6 @@ int searchWordInTrie(TRIE* root, char* word){
   }
 }
 
-// given a word check if the first length numbers can form a word
-int searchForPrefixInTrie(TRIE* root, char* word, int prefixLength){
-  int index;
-  TRIE* iterator = root;
-  // printf("%i\n", root -> children[CHAR_TO_INDEX('p')] -> charactersTillLongest);
-  int wordLength = strlen(word);
-  for(int i = 0; i < prefixLength; i++){
-    index = CHAR_TO_INDEX(word[i]);
-    if (iterator -> children[index] == NULL || iterator -> children[index] -> charactersTillLongest < wordLength) {
-      return FALSE;
-    }
-    wordLength--;
-    iterator = iterator->children[index];
-  }
-  return TRUE;
-}
 
 TRIE* loadDictionary(){
   TRIE* root = createTrieNode(NULL);
