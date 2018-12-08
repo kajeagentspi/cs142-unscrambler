@@ -18,7 +18,8 @@ TRIE* createTrieNode(TRIE* parent){
     node -> isEnd = FALSE;
     node -> charactersTillLongest = -1;
     node -> charactersTillNextEnd = 999;
-    for(int i = 0; i < SIZE; i++){
+    int i;
+    for(i = 0; i < SIZE; i++){
       node -> children[i] = NULL;
     }
     
@@ -31,7 +32,8 @@ int searchForPrefixInTrie(TRIE* root, char* word, int prefixLength){
   TRIE* iterator = root;
   // printf("%i\n", root -> children[CHAR_TO_INDEX('p')] -> charactersTillLongest);
   int wordLength = strlen(word);
-  for(int i = 0; i < prefixLength; i++){
+  int i;
+  for(i = 0; i < prefixLength; i++){
     index = CHAR_TO_INDEX(word[i]);
     if (iterator -> children[index] == NULL || iterator -> children[index] -> charactersTillLongest < wordLength || iterator -> children[index] -> charactersTillNextEnd > wordLength) {
       return FALSE;
@@ -46,8 +48,9 @@ void insertWordToTrie(TRIE* root, char* word){
   int length = strlen(word);
   int index;
   int remainingCharacters = length;
+  int i;
   TRIE* iterator = root;
-  for(int i = 0; i < length; i++){
+  for(i = 0; i < length; i++){
     index = CHAR_TO_INDEX(word[i]);
     if (iterator -> children[index] == NULL) {
       iterator -> children[index] = createTrieNode(iterator);
@@ -67,7 +70,8 @@ void insertWordToTrie(TRIE* root, char* word){
 
 void deleteWord(TRIE* end, char* word){
   // check if there are children if there is no changes
-  for(int i = 0; i < SIZE; i++){
+  int i;
+  for(i = 0; i < SIZE; i++){
     if (end -> children[i] != NULL) {
       return;
     }
@@ -76,7 +80,7 @@ void deleteWord(TRIE* end, char* word){
   int counter = 1;
   TRIE* iterator = end;
   int subword = FALSE;
-  for(int i = 0; i < length; i++){
+  for(i = 0; i < length; i++){
     if (iterator == NULL) {
       break;
     }else if (iterator -> isEnd == TRUE && i != 0 && subword == FALSE){
@@ -99,8 +103,9 @@ void deleteWord(TRIE* end, char* word){
 int searchWordInTrie(TRIE* root, char* word){
   int length = strlen(word);
   int index;
+  int i;
   TRIE* iterator = root;
-  for(int i = 0; i < length; i++){
+  for(i = 0; i < length; i++){
     index = CHAR_TO_INDEX(word[i]);
     if (iterator -> children[index] == NULL) {
       return FALSE;
@@ -122,6 +127,7 @@ TRIE* loadDictionary(){
   FILE *fp = fopen("words.txt", "r");
   int loaded=0;
   int discarded=0;
+  int i;
   if(fp){
     const size_t line_size = 300;
     char *line = (char *)malloc(line_size);
@@ -130,7 +136,7 @@ TRIE* loadDictionary(){
     while (fgets(line, line_size, fp) != NULL){
       alpha = TRUE;
       line[strcspn(line, "\r\n")] = '\0';
-      for (int i = 0; line[i]; i++){
+      for (i = 0; line[i]; i++){
         if (!isalpha(line[i])) {
           alpha = FALSE;
           discarded++;
@@ -146,8 +152,6 @@ TRIE* loadDictionary(){
       }
     }
     fclose(fp);
-    printf("Words Loaded: %i\n", loaded);
-    printf("Words Discarded: %i\n", discarded);
     return root;
   }else{
     exit(1);

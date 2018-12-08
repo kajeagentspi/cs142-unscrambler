@@ -9,7 +9,8 @@ char* mergeTemplate(char* generated, int blanks, char* template, int templateLen
   char *generatedWord = (char *)malloc(sizeof(char) * templateLength + 1);
   strcpy(generatedWord, template);
   int blankCounter = 0;
-  for(int i = 0; i < templateLength || blankCounter < blanks; i++){
+  int i;
+  for(i = 0; i < templateLength || blankCounter < blanks; i++){
     if (generatedWord[i] = '_') {
       if (firstReplace && blankCounter == 0) {
         *firstReplace = i;
