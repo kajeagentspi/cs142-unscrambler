@@ -11,7 +11,7 @@ char* mergeTemplate(char* generated, int blanks, char* template, int templateLen
   int blankCounter = 0;
   int i;
   for(i = 0; i < templateLength || blankCounter < blanks; i++){
-    if (generatedWord[i] = '_') {
+    if (generatedWord[i] == '_') {
       if (firstReplace && blankCounter == 0) {
         *firstReplace = i;
       }
